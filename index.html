@@ -1,11 +1,9 @@
-
-
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Der Noten-Retter</title>
+    <title>Der Noten-Retter Hessen</title>
     <style>
         :root {
             --bg: #fafafa;
@@ -14,8 +12,6 @@
             --text-sec: #737373;
             --border: #e5e5e5;
             --primary: #000000;
-            
-            /* Dynamische Farben für das Feedback */
             --status-bg: #f5f5f5;
             --status-text: #171717;
             --status-border: #e5e5e5;
@@ -31,6 +27,37 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+        }
+
+        /* STUFEN SWITCHER BUTTONS */
+        .stufe-switcher {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: #f0f0f0;
+            padding: 4px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .stufe-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-sec);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .stufe-btn.active {
+            background: var(--card-bg);
+            color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .container {
@@ -71,7 +98,7 @@
             color: var(--text);
         }
 
-        select, input {
+        select {
             width: 100%;
             padding: 12px;
             border: 1px solid var(--border);
@@ -83,14 +110,8 @@
             transition: border-color 0.2s;
         }
 
-        select:focus, input:focus {
+        select:focus {
             border-color: var(--primary);
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
         }
 
         .btn {
@@ -111,7 +132,6 @@
             opacity: 0.85;
         }
 
-        /* DIE COOLE FUNKTION: DYNAMISCHE FEEDBACK-KARTE */
         .feedback-card {
             margin-top: 28px;
             padding: 20px;
@@ -155,122 +175,257 @@
 </head>
 <body>
 
+    <div class="stufe-switcher">
+        <button id="btn-mittel" class="stufe-btn active" onclick="setStufe('mittel')">Mittelstufe (Noten)</button>
+        <button id="btn-ober" class="stufe-btn" onclick="setStufe('ober')">Oberstufe (Punkte 0-15)</button>
+    </div>
+
     <div class="container">
-        <h1>Der Noten-Retter</h1>
-        <div class="subtitle">Berechne deine exakte Zeugnisnote inklusive pädagogischem Spielraum.</div>
+        <h1 id="main-title">Der Noten-Retter</h1>
+        <div class="subtitle">Berechne deine exakte Zeugnisnote nach dem hessischen System.</div>
 
         <div class="form-group">
             <label for="fachTyp">Fachart:</label>
             <select id="fachTyp" onchange="anpassenFachfelder()">
-                <option value="haupt">Hauptfach (50% Mündlich / 2x 25% Arbeiten)</option>
-                <option value="neben">Nebenfach (66.67% Mündlich / 1x 33.33% Arbeit)</option>
-            </select>
+                </select>
         </div>
 
         <div class="form-group">
-            <label for="noteMuendlich">Mündliche Note (1 - 6):</label>
-            <input type="number" id="noteMuendlich" min="1" max="6" step="0.25" placeholder="z.B. 2.5">
+            <label id="labelMuendlich" for="noteMuendlich">Mündliche Note:</label>
+            <select id="noteMuendlich">
+                </select>
         </div>
 
         <div class="form-group" id="arbeit1-group">
             <label id="arbeit1-label" for="noteArbeit1">1. Klassenarbeit:</label>
-            <input type="number" id="noteArbeit1" min="1" max="6" step="1" placeholder="z.B. 3">
+            <select id="noteArbeit1">
+                </select>
         </div>
 
         <div class="form-group" id="arbeit2-group">
-            <label for="noteArbeit2">2. Klassenarbeit:</label>
-            <input type="number" id="noteArbeit2" min="1" max="6" step="1" placeholder="z.B. 2">
+            <label id="arbeit2-label" for="noteArbeit2">2. Klassenarbeit:</label>
+            <select id="noteArbeit2">
+                </select>
         </div>
 
-        <div class="form-group">
-            <label for="vorherigeNote">Endnote des vorherigen Halbjahres (Optional):</label>
-            <input type="number" id="vorherigeNote" min="1" max="6" step="1" placeholder="Hilft bei ,5 Entscheidungen">
+        <div class="form-group" id="vorher-group">
+            <label id="labelVorherige" for="vorherigeNote">Endnote des vorherigen Halbjahres (Optional):</label>
+            <select id="vorherigeNote">
+                </select>
         </div>
 
         <button class="btn" onclick="berechneZeugnisnote()">Note berechnen</button>
 
         <div id="feedbackCard" class="feedback-card">
-            <div class="result-title">Errechnete Endnote</div>
+            <div class="result-title">Errechnetes Zeugnis-Ergebnis</div>
             <div id="gradeOutput" class="result-grade">--</div>
             <div id="descOutput" class="result-desc"></div>
         </div>
     </div>
 
 <script>
-// Passt die Felder an, je nachdem ob Haupt- oder Nebenfach gewählt ist
+let aktuelleStufe = "mittel"; // "mittel" oder "ober"
+
+// Listen für die Dropdowns erstellen
+const notenListe = [
+    { text: "Bitte wählen...", val: "" },
+    { text: "1+", val: 0.67 }, { text: "1", val: 1.0 }, { text: "1-", val: 1.33 },
+    { text: "2+", val: 1.67 }, { text: "2", val: 2.0 }, { text: "2-", val: 2.33 },
+    { text: "3+", val: 2.67 }, { text: "3", val: 3.0 }, { text: "3-", val: 3.33 },
+    { text: "4+", val: 3.67 }, { text: "4", val: 4.0 }, { text: "4-", val: 4.33 },
+    { text: "5+", val: 4.67 }, { text: "5", val: 5.0 }, { text: "5-", val: 5.33 },
+    { text: "6", val: 6.0 }
+];
+
+const punkteListe = [
+    { text: "Bitte wählen...", val: "" },
+    { text: "15 Punkte (1+)", val: 0.67 }, { text: "14 Punkte (1)", val: 1.0 }, { text: "13 Punkte (1-)", val: 1.33 },
+    { text: "12 Punkte (2+)", val: 1.67 }, { text: "11 Punkte (2)", val: 2.0 }, { text: "10 Punkte (2-)", val: 2.33 },
+    { text: "09 Punkte (3+)", val: 2.67 }, { text: "08 Punkte (3)", val: 3.0 }, { text: "07 Punkte (3-)", val: 3.33 },
+    { text: "06 Punkte (4+)", val: 3.67 }, { text: "05 Punkte (4)", val: 4.0 }, { text: "04 Punkte (4-)", val: 4.33 },
+    { text: "03 Punkte (5+)", val: 4.67 }, { text: "02 Punkte (5)", val: 5.0 }, { text: "01 Punkt  (5-)", val: 5.33 },
+    { text: "00 Punkte (6)", val: 6.0 }
+];
+
+// Funktion um aus einem errechneten Dezimalwert wieder die nächste glatte Oberstufenpunktzahl zu finden
+function dezimalZuPunkten(dezimal) {
+    let besteDistanz = 999;
+    let bestePunkte = 0;
+    let punkteZuDezimalKarten = [
+        {p: 15, v: 0.67}, {p: 14, v: 1.0}, {p: 13, v: 1.33},
+        {p: 12, v: 1.67}, {p: 11, v: 2.0}, {p: 10, v: 2.33},
+        {p: 9, v: 2.67},  {p: 8, v: 3.0},  {p: 7, v: 3.33},
+        {p: 6, v: 3.67},  {p: 5, v: 4.0},  {p: 4, v: 4.33},
+        {p: 3, v: 4.67},  {p: 2, v: 5.0},  {p: 1, v: 5.33},
+        {p: 0, v: 6.0}
+    ];
+    punkteZuDezimalKarten.forEach(k => {
+        let dist = Math.abs(k.v - dezimal);
+        if(dist < besteDistanz) {
+            besteDistanz = dist;
+            bestePunkte = k.p;
+        }
+    });
+    return bestePunkte;
+}
+
+// Wandelt glatte gerundete Schulnoten (1-6) wieder in Text um
+function dezimalZuNoteText(dezimal) {
+    let gerundet = Math.round(dezimal);
+    if (gerundet < 1) gerundet = 1;
+    if (gerundet > 6) gerundet = 6;
+    return gerundet.toString();
+}
+
+// Initialisierung bei Seitenstart
+window.onload = function() {
+    setStufe('mittel');
+};
+
+function setStufe(stufe) {
+    aktuelleStufe = stufe;
+    document.getElementById("btn-mittel").classList.toggle("active", stufe === "mittel");
+    document.getElementById("btn-ober").classList.toggle("active", stufe === "ober");
+    
+    document.getElementById("feedbackCard").classList.remove("show");
+
+    const fachTyp = document.getElementById("fachTyp");
+    fachTyp.innerHTML = "";
+
+    if (stufe === "mittel") {
+        document.getElementById("main-title").innerText = "Der Noten-Retter (Mittelstufe)";
+        document.getElementById("labelMuendlich").innerText = "Mündliche Note:";
+        document.getElementById("labelVorherige").innerText = "Endnote des vorherigen Halbjahres (Optional):";
+        
+        fachTyp.options.add(new Option("Hauptfach (50% Mündlich / 2x 25% Arbeiten)", "haupt"));
+        fachTyp.options.add(new Option("Nebenfach (66.67% Mündlich / 1x 33.33% Arbeit)", "neben"));
+        
+        befuelleDropdowns(notenListe);
+    } else {
+        document.getElementById("main-title").innerText = "Der Noten-Retter (Oberstufe)";
+        document.getElementById("labelMuendlich").innerText = "Mündliche Punkte:";
+        document.getElementById("labelVorherige").innerText = "Endpunkte des vorherigen Halbjahres (Optional):";
+
+        fachTyp.options.add(new Option("Leistungskurs / Hauptfach (50% Mündlich / 2x 25% Klausuren)", "haupt"));
+        fachTyp.options.add(new Option("Grundkurs / Nebenfach (66.67% Mündlich / 1x 33.33% Klausur)", "neben"));
+        
+        befuelleDropdowns(punkteListe);
+    }
+    anpassenFachfelder();
+}
+
+function befuelleDropdowns(liste) {
+    const ids = ["noteMuendlich", "noteArbeit1", "noteArbeit2", "vorherigeNote"];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        el.innerHTML = "";
+        liste.forEach(item => {
+            let opt = new Option(item.text, item.val);
+            el.options.add(opt);
+        });
+    });
+}
+
 function anpassenFachfelder() {
     const fachTyp = document.getElementById("fachTyp").value;
     const arbeit2Group = document.getElementById("arbeit2-group");
     const arbeit1Label = document.getElementById("arbeit1-label");
+    const arbeit2Label = document.getElementById("arbeit2-label");
 
     if (fachTyp === "neben") {
         arbeit2Group.style.display = "none";
-        arbeit1Label.innerText = "Klassenarbeit / Epochalnote:";
+        arbeit1Label.innerText = aktuelleStufe === "mittel" ? "Klassenarbeit / Epochalnote:" : "Klausurnote:";
     } else {
         arbeit2Group.style.display = "block";
-        arbeit1Label.innerText = "1. Klassenarbeit:";
+        arbeit1Label.innerText = aktuelleStufe === "mittel" ? "1. Klassenarbeit:" : "1. Klausur:";
+        arbeit2Label.innerText = aktuelleStufe === "mittel" ? "2. Klassenarbeit:" : "2. Klausur:";
     }
-    // Versteckt das Ergebnis beim Wechseln der Fachart
     document.getElementById("feedbackCard").classList.remove("show");
 }
 
 function berechneZeugnisnote() {
     const fachTyp = document.getElementById("fachTyp").value;
-    const muendlich = parseFloat(document.getElementById("noteMuendlich").value);
-    const arbeit1 = parseFloat(document.getElementById("noteArbeit1").value);
-    const vorherige = parseFloat(document.getElementById("vorherigeNote").value);
+    const muendlich = document.getElementById("noteMuendlich").value;
+    const arbeit1 = document.getElementById("noteArbeit1").value;
+    const vorherigeRaw = document.getElementById("vorherigeNote").value;
 
-    // Validierung der Pflichtfelder
-    if (isNaN(muendlich) || isNaN(arbeit1)) {
-        alert("Bitte trage mindestens die mündliche Note und die erste Arbeit ein.");
+    if (muendlich === "" || arbeit1 === "") {
+        alert("Bitte wähle mindestens die mündliche Leistung und die erste schriftliche Leistung aus.");
         return;
     }
 
+    const mVal = parseFloat(muendlich);
+    const a1Val = parseFloat(arbeit1);
     let schnitt = 0;
 
     if (fachTyp === "haupt") {
-        const arbeit2 = parseFloat(document.getElementById("noteArbeit2").value);
-        if (isNaN(arbeit2)) {
-            alert("Bitte trage auch die zweite Klassenarbeit für das Hauptfach ein.");
+        const arbeit2 = document.getElementById("noteArbeit2").value;
+        if (arbeit2 === "") {
+            alert("Bitte wähle auch die zweite schriftliche Leistung aus.");
             return;
         }
-        // Hauptfach: 50% Mündlich, 2x 25% Schriftlich (= 50% Schriftlich gesamt)
-        const schriftlichSchnitt = (arbeit1 + arbeit2) / 2;
-        schnitt = (muendlich * 0.5) + (schriftlichSchnitt * 0.5);
+        const a2Val = parseFloat(arbeit2);
+        const schriftlichSchnitt = (a1Val + a2Val) / 2;
+        schnitt = (mVal * 0.5) + (schriftlichSchnitt * 0.5);
     } else {
-        // Nebenfach: 66.666...% Mündlich, 33.333...% Schriftlich (Verhältnis 2/3 zu 1/3)
-        schnitt = (muendlich * (2/3)) + (arbeit1 * (1/3));
+        schnitt = (mVal * (2/3)) + (a1Val * (1/3));
     }
 
-    let endnote = Math.round(schnitt); // Standard-Rundung
-    let pädagogischerHinweis = "";
+    let endanzeige = "";
+    let pädagogischerHinweis = `Dein mathematisch exakter Notenschnitt liegt bei <strong>${schnitt.toFixed(2)}</strong>.`;
+    let farbKategorie = 3; 
 
-    // SONDERREGEL BEI GENAU ,5 (Trend-Entscheidung anhand des letzten Halbjahres)
-    const nachkomma = schnitt - Math.floor(schnitt);
-    if (Math.abs(nachkomma - 0.5) < 0.001) { // Prüft auf mathematisch ca. ,5
-        const abgerundet = Math.floor(schnitt);
-        const aufgerundet = Math.ceil(schnitt);
+    if (aktuelleStufe === "mittel") {
+        // --- LOGIK MITTELSTUFE (NOTEN 1 BIS 6) ---
+        let endnote = Math.round(schnitt);
+        const nachkomma = schnitt - Math.floor(schnitt);
 
-        if (!isNaN(vorherige)) {
-            if (aufgerundet > vorherige) {
-                // Die schlechtere Note (höhere Zahl) ist schlechter als im Vorhalbjahr -> Man hat sich verschlechtert -> Lehrer rundet eher ab/auf zum Schlechteren
-                endnote = aufgerundet;
-                pädagogischerHinweis = `Da du im letzten Halbjahr eine <strong>${vorherige}</strong> hattest, hast du dich verschlechtert. Bei einer <strong>${schnitt.toFixed(2)}</strong> wird daher meist auf die <strong>${endnote}</strong> aufgerundet.`;
-            } else if (abgerundet < vorherige) {
-                // Die bessere Note (kleinere Zahl) ist besser als im Vorhalbjahr -> Man hat sich verbessert -> Lehrer gibt die bessere Note
-                endnote = abgerundet;
-                pädagogischerHinweis = `Starke Leistung! Da du im letzten Halbjahr eine <strong>${vorherige}</strong> hattest, zeigt dein Trend nach oben. Bei einer <strong>${schnitt.toFixed(2)}</strong> gibt dir der Lehrer wahrscheinlich die bessere <strong>${endnote}</strong>.`;
+        if (Math.abs(nachkomma - 0.5) < 0.03) { // Erkennt Fälle nahe an der ,5 Grenze
+            const abgerundet = Math.floor(schnitt);
+            const aufgerundet = Math.ceil(schnitt);
+
+            if (vorherigeRaw !== "") {
+                const vVal = parseFloat(vorherigeRaw); // Wert des Vorhalbjahres (auch als Dezimal-Repräsentation)
+                if (aufgerundet > Math.round(vVal)) {
+                    endnote = aufgerundet;
+                    pädagogischerHinweis = `Da du im letzten Halbjahr besser standest, zeigt dein Trend nach unten. Bei einer glatten ,5 (<strong>${schnitt.toFixed(2)}</strong>) tendiert der Lehrer meist zur schlechteren Note <strong>${endnote}</strong>.`;
+                } else if (abgerundet < Math.round(vVal)) {
+                    endnote = abgerundet;
+                    pädagogischerHinweis = `Starke Leistung! Da du im letzten Halbjahr schlechter standest, zeigt dein Trend nach oben. Bei einer <strong>${schnitt.toFixed(2)}</strong> kriegst du wahrscheinlich die bessere Note <strong>${endnote}</strong>.`;
+                } else {
+                    endnote = aufgerundet;
+                    pädagogischerHinweis = `Du stehst exakt auf einer <strong>${schnitt.toFixed(2)}</strong>. Da es keine Veränderung zum Vorjahr gab, liegt es im Ermessen des Lehrers.`;
+                }
             } else {
-                endnote = aufgerundet; // Standardfall wenn gleichbleibend
-                pädagogischerHinweis = `Du stehst exakt auf <strong>${schnitt.toFixed(2)}</strong>. Da du im Vorjahr dieselbe Note hattest, liegt es komplett im Ermessen des Lehrers (Tipp: Einmal freiwillig melden rettet die bessere Note!).`;
+                endnote = aufgerundet;
+                pädagogischerHinweis = `Du stehst exakt auf <strong>${schnitt.toFixed(2)}</strong>. Trag dein Vorhalbjahr ein, um den pädagogischen Spielraum genauer zu berechnen!`;
             }
-        } else {
-            endnote = aufgerundet; // Standard-Rundung falls kein Vorhalbjahr eingetragen ist
-            pädagogischerHinweis = `Du stehst exakt zwischen zwei Noten (<strong>${schnitt.toFixed(2)}</strong>). Trag deine vorherige Note ein, um die Trend-Entscheidung zu simulieren!`;
         }
+        endanzeige = dezimalZuNoteText(endnote);
+        farbKategorie = endnote;
+
     } else {
-        // Normaler Text, wenn es keine ,5 Entscheidung ist
-        pädagogischerHinweis = `Dein mathematisch exakter Schnitt liegt bei <strong>${schnitt.toFixed(2)}</strong>.`;
+        // --- LOGIK OBERSTUFE (PUNKTE 0 BIS 15) ---
+        let punkte = dezimalZuPunkten(schnitt);
+        
+        // Pädagogischer Spielraum bei Grenzfällen (In Punkten entspricht ein ,5-Schnitt genau dem Wert zwischen zwei Punkten)
+        // Im Hintergrund prüfen wir, ob der berechnete Schnitt nah am Mittelwert zweier Punktstufen liegt.
+        let punkteVorher = vorherigeRaw !== "" ? dezimalZuPunkten(parseFloat(vorherigeRaw)) : null;
+        
+        if (punkteVorher !== null) {
+            if (punkte < punkteVorher) {
+                pädagogischerHinweis += `<br>Dein Trend zeigt abwärts im Vergleich zum Vorhalbjahr (${punkteVorher} Punkte). Zeig vollen Einsatz in den letzten Stunden, um die Punktstufe abzusichern!`;
+            } else if (punkte > punkteVorher) {
+                pädagogischerHinweis += `<br>Stark verbessert! Dein Trend zeigt nach oben im Vergleich zum Vorhalbjahr (${punkteVorher} Punkte).`;
+            }
+        }
+
+        endanzeige = punkte === 1 ? punkte + " Punkt" : punkte + " Punkte";
+        
+        // Farbzuordnung via Oberstufen-Punkte
+        if (punkte >= 10) farbKategorie = 1;      // Im 2er/1er Bereich (Grün)
+        else if (punkte >= 5) farbKategorie = 3;   // Im 4er/3er Bereich (Grau)
+        else farbKategorie = 5;                    // Unterbelegt / Defizit (Rot)
     }
 
     // UPDATING THE DESIGN (DIE COOLE FUNKTION UNTEN)
@@ -278,29 +433,24 @@ function berechneZeugnisnote() {
     const gradeOut = document.getElementById("gradeOutput");
     const descOut = document.getElementById("descOutput");
 
-    gradeOut.innerText = endnote;
+    gradeOut.innerText = endanzeige;
     descOut.innerHTML = pädagogischerHinweis;
 
-    // Dynamische Farbänderung des Elements basierend auf der Note (Minimalistisch aber wirkungsvoll)
-    if (endnote <= 2) {
-        // Sehr gut / Gut -> Edles, dezentes Grün
+    if (farbKategorie <= 2) {
         document.documentElement.style.setProperty('--status-bg', '#f0fdf4');
         document.documentElement.style.setProperty('--status-border', '#bbf7d0');
         document.documentElement.style.setProperty('--status-text', '#16a34a');
-    } else if (endnote === 3 || endnote === 4) {
-        // Befriedigend / Ausreichend -> Neutrales Anthrazit/Blau
+    } else if (farbKategorie === 3 || farbKategorie === 4) {
         document.documentElement.style.setProperty('--status-bg', '#f8fafc');
         document.documentElement.style.setProperty('--status-border', '#e2e8f0');
         document.documentElement.style.setProperty('--status-text', '#475569');
     } else {
-        // Mangelhaft / Ungenügend -> Warnendes Soft-Rot
         document.documentElement.style.setProperty('--status-bg', '#fef2f2');
         document.documentElement.style.setProperty('--status-border', '#fca5a5');
         document.documentElement.style.setProperty('--status-text', '#dc2626');
-        descOut.innerHTML += "<br><br>⚠️ <strong>Rettungs-Tipp:</strong> Bereite für die nächste Stunde unaufgefordert ein Kurzreferat vor, um deine mündliche Note sofort anzuheben!";
+        descOut.innerHTML += "<br><br>⚠️ <strong>Rettungs-Tipp:</strong> Bereite für die nächste Stunde unaufgefordert ein Kurzreferat oder eine freiwillige Präsentation vor, um deine mündliche Note sofort anzuheben!";
     }
 
-    // Animation triggern
     card.classList.add("show");
 }
 </script>
