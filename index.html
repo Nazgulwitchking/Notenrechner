@@ -1,5 +1,4 @@
-
-
+   
 
 
 <!DOCTYPE html>
@@ -193,7 +192,7 @@
         <div id="main-sub" class="subtitle">Berechne deine exakte Zeugnisnote nach dem hessischen System.</div>
 
         <div class="form-group" id="wunsch-group" style="display: none;">
-            <label id="labelWunsch" for="wunschNote">Deine Wunschnote (Pflichtfeld):</label>
+            <label id="labelWunsch" for="wunschNote">Deine exakte Wunschnote (Pflichtfeld):</label>
             <select id="wunschNote"></select>
         </div>
 
@@ -256,14 +255,6 @@ const punkteListe = [
     { text: "00 Punkte (6)", val: 6.0 }
 ];
 
-const wunschNotenMittel = [
-    { text: "Bitte wählen...", val: "" },
-    { text: "Note 1", val: 1 }, { text: "Note 2", val: 2 }, { text: "Note 3", val: 3 },
-    { text: "Note 4", val: 4 }, { text: "Note 5", val: 5 }, { text: "Note 6", val: 6 }
-];
-const wunschNotenOber = [{ text: "Bitte wählen...", val: "" }];
-for(let i=15; i>=0; i--) { wunschNotenOber.push({ text: i + " Punkte", val: i }); }
-
 window.onload = function() {
     setStufe('mittel');
 };
@@ -287,9 +278,10 @@ function setStufe(stufe) {
         befuelleDropdowns(punkteListe);
     }
     
+    // Wunschnoten-Dropdown kriegt jetzt die exakt selbe detailreiche Liste (inkl. Tendenzen)
     const wunschSelect = document.getElementById("wunschNote");
     wunschSelect.innerHTML = "";
-    const aktuelleWunschListe = (stufe === "mittel") ? wunschNotenMittel : wunschNotenOber;
+    const aktuelleWunschListe = (stufe === "mittel") ? notenListe : punkteListe;
     aktuelleWunschListe.forEach(item => {
         wunschSelect.options.add(new Option(item.text, item.val));
     });
@@ -421,7 +413,17 @@ function berechneZeugnisnote() {
                 }
             }
         }
-        endanzeige = endnote; farbKategorie = endnote;
+        
+        // Finde den passenden Text (wie 2- oder 3+) für die getroffene Dezimalstufe
+        let besteDistanz = 999;
+        let finalerText = "";
+        notenListe.forEach(n => {
+            if(n.val === "") return;
+            let d = Math.abs(n.val - schnitt);
+            if(d < besteDistanz) { besteDistanz = d; finalerText = n.text; }
+        });
+        endanzeige = finalerText; 
+        farbKategorie = endnote;
     } else {
         let punkte = dezimalZuPunkten(schnitt);
         endanzeige = punkte + " Punkte";
@@ -440,7 +442,8 @@ function berechneWunschKombinationen() {
     const wunsch = document.getElementById("wunschNote").value;
     if(wunsch === "") { alert("Bitte wähle eine Wunschnote aus!"); return; }
     
-    const zielWert = parseInt(wunsch);
+    const zielDezimal = parseFloat(wunsch);
+    const wunschText = document.getElementById("wunschNote").options[document.getElementById("wunschNote").selectedIndex].text;
     const fachTyp = document.getElementById("fachTyp").value;
     
     const mSel = document.getElementById("noteMuendlich").value;
@@ -463,13 +466,14 @@ function berechneWunschKombinationen() {
                     if(a2Sel !== "" && Math.abs(parseFloat(a2Sel) - oA2.val) > 0.01) return;
 
                     let schnitt = (oM.val * 0.5) + (((oA1.val + oA2.val) / 2) * 0.5);
-                    if(pruefeObMatch(schnitt, zielWert)) {
+                    // Toleranzgrenze (0.025), um Rundungsunschärfen bei Drittel- oder Viertelbrüchen abzufangen
+                    if(Math.abs(schnitt - zielDezimal) < 0.025) {
                         guetigeKombis.push({ m: oM.text, a1: oA1.text, a2: oA2.text, mV: oM.val, a1V: oA1.val, a2V: oA2.val });
                     }
                 });
             } else {
                 let schnitt = (oM.val * (2/3)) + (oA1.val * (1/3));
-                if(pruefeObMatch(schnitt, zielWert)) {
+                if(Math.abs(schnitt - zielDezimal) < 0.025) {
                     guetigeKombis.push({ m: oM.text, a1: oA1.text, mV: oM.val, a1V: oA1.val });
                 }
             }
@@ -482,10 +486,10 @@ function berechneWunschKombinationen() {
     const empfOut = document.getElementById("empfehlungOutput");
 
     document.getElementById("res-card-title").innerText = "Mögliche Noten-Wege";
-    gradeOut.innerText = (aktuelleStufe === "mittel") ? "Ziel: " + zielWert : "Ziel: " + zielWert + " Pkt.";
+    gradeOut.innerText = "Ziel: " + wunschText;
 
     if(guetigeKombis.length === 0) {
-        descOut.innerHTML = "❌ Mit deinen bereits eingetragenen Noten ist dieses Ziel mathematisch leider nicht mehr erreichbar.";
+        descOut.innerHTML = "❌ Mit deinen bereits eingetragenen Noten ist dieses exakte Ziel mathematisch leider nicht mehr erreichbar.";
         empfOut.style.display = "none";
         styleFeedbackCard(5);
     } else {
@@ -529,14 +533,6 @@ function berechneWunschKombinationen() {
         }
     }
     card.style.display = "block";
-}
-
-function pruefeObMatch(schnitt, ziel) {
-    if(aktuelleStufe === "mittel") {
-        return Math.round(schnitt) === ziel;
-    } else {
-        return dezimalZuPunkten(schnitt) === ziel;
-    }
 }
 
 function styleFeedbackCard(kat) {
