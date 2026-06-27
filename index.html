@@ -1,4 +1,6 @@
-   
+
+
+
 
 
 <!DOCTYPE html>
@@ -235,9 +237,10 @@
 let aktuelleStufe = "mittel"; 
 let aktuellerModus = "rechner"; 
 
+// ACHTUNG: "1+" hier komplett für die Mittelstufe entfernt!
 const notenListe = [
     { text: "Bitte wählen...", val: "" },
-    { text: "1+", val: 0.67 }, { text: "1", val: 1.0 }, { text: "1-", val: 1.33 },
+    { text: "1", val: 1.0 }, { text: "1-", val: 1.33 },
     { text: "2+", val: 1.67 }, { text: "2", val: 2.0 }, { text: "2-", val: 2.33 },
     { text: "3+", val: 2.67 }, { text: "3", val: 3.0 }, { text: "3-", val: 3.33 },
     { text: "4+", val: 3.67 }, { text: "4", val: 4.0 }, { text: "4-", val: 4.33 },
@@ -278,7 +281,6 @@ function setStufe(stufe) {
         befuelleDropdowns(punkteListe);
     }
     
-    // Wunschnoten-Dropdown kriegt jetzt die exakt selbe detailreiche Liste (inkl. Tendenzen)
     const wunschSelect = document.getElementById("wunschNote");
     wunschSelect.innerHTML = "";
     const aktuelleWunschListe = (stufe === "mittel") ? notenListe : punkteListe;
@@ -414,7 +416,6 @@ function berechneZeugnisnote() {
             }
         }
         
-        // Finde den passenden Text (wie 2- oder 3+) für die getroffene Dezimalstufe
         let besteDistanz = 999;
         let finalerText = "";
         notenListe.forEach(n => {
@@ -466,7 +467,6 @@ function berechneWunschKombinationen() {
                     if(a2Sel !== "" && Math.abs(parseFloat(a2Sel) - oA2.val) > 0.01) return;
 
                     let schnitt = (oM.val * 0.5) + (((oA1.val + oA2.val) / 2) * 0.5);
-                    // Toleranzgrenze (0.025), um Rundungsunschärfen bei Drittel- oder Viertelbrüchen abzufangen
                     if(Math.abs(schnitt - zielDezimal) < 0.025) {
                         guetigeKombis.push({ m: oM.text, a1: oA1.text, a2: oA2.text, mV: oM.val, a1V: oA1.val, a2V: oA2.val });
                     }
@@ -505,6 +505,7 @@ function berechneWunschKombinationen() {
         html += "</ul>";
         descOut.innerHTML = html;
 
+        // VERBESSERTER EMPFEHLUNGS-ALGORITHMUS (Bestraft extreme Notenunterschiede und "Utopie"-Mündlichnoten)
         let besteKombi = null;
         let kleinsterScore = 999;
 
@@ -512,9 +513,15 @@ function berechneWunschKombinationen() {
             let score = 0;
             if(fachTyp === "haupt") {
                 let diffArbeiten = Math.abs(k.a1V - k.a2V);
-                score = diffArbeiten + (Math.abs(k.mV - k.a1V) * 0.5);
+                let diffMuendlichZuArbeit1 = Math.abs(k.mV - k.a1V);
+                let diffMuendlichZuArbeit2 = Math.abs(k.mV - k.a2V);
+                
+                // Ein hoher Unterschied zwischen den einzelnen Noten erhöht den "Straf-Score".
+                // Wir gewichten Abweichungen zur mündlichen Note extra stark, damit "mündlich 1 und Arbeiten 3" verhindert wird.
+                score = (diffArbeiten * 1.5) + (diffMuendlichZuArbeit1 * 2.0) + (diffMuendlichZuArbeit2 * 2.0);
             } else {
-                score = Math.abs(k.mV - k.a1V);
+                // Nebenfach: Einfacher Abstand zwischen Mündlich und Schriftlich
+                score = Math.abs(k.mV - k.a1V) * 3.0;
             }
 
             if(score < kleinsterScore) {
@@ -526,13 +533,21 @@ function berechneWunschKombinationen() {
         if(besteKombi) {
             empfOut.style.display = "block";
             if(fachTyp === "haupt") {
-                empfOut.innerHTML = `💡 <strong>Empfohlener Weg:</strong><br>Versuche mündlich auf eine <strong>${besteKombi.m}</strong> zu kommen und in den Arbeiten jeweils eine <strong>${besteKombi.a1}</strong> und eine <strong>${besteKombi.a2}</strong> zu schreiben. Das ist realistischer als extreme Ausreißer!`;
+                empfOut.innerHTML = `💡 <strong>Empfohlener Weg (am konstantesten zu erreichen):</strong><br>Versuche dich auf mündlich <strong>${besteKombi.m}</strong> einzupendeln und in den Arbeiten eine <strong>${besteKombi.a1}</strong> sowie eine <strong>${besteKombi.a2}</strong> zu schreiben. Extrem ungleiche Ausreißer sind so gut wie möglich vermieden!`;
             } else {
-                empfOut.innerHTML = `💡 <strong>Empfohlener Weg:</strong><br>Konzentriere dich auf mündlich <strong>${besteKombi.m}</strong> und eine <strong>${besteKombi.a1}</strong> in der Arbeit.`;
+                empfOut.innerHTML = `💡 <strong>Empfohlener Weg (am konstantesten zu erreichen):</strong><br>Konzentriere dich gleichmäßig auf mündlich <strong>${besteKombi.m}</strong> und eine <strong>${besteKombi.a1}</strong> in der Arbeit.`;
             }
         }
     }
     card.style.display = "block";
+}
+
+function pruefeObMatch(schnitt, ziel) {
+    if(aktuelleStufe === "mittel") {
+        return Math.round(schnitt) === ziel;
+    } else {
+        return dezimalZuPunkten(schnitt) === ziel;
+    }
 }
 
 function styleFeedbackCard(kat) {
