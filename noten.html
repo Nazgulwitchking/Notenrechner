@@ -1,0 +1,309 @@
+
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Der Noten-Retter</title>
+    <style>
+        :root {
+            --bg: #fafafa;
+            --card-bg: #ffffff;
+            --text: #171717;
+            --text-sec: #737373;
+            --border: #e5e5e5;
+            --primary: #000000;
+            
+            /* Dynamische Farben für das Feedback */
+            --status-bg: #f5f5f5;
+            --status-text: #171717;
+            --status-border: #e5e5e5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-top: 0;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-sec);
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #fff;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--primary);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .btn {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            opacity: 0.85;
+        }
+
+        /* DIE COOLE FUNKTION: DYNAMISCHE FEEDBACK-KARTE */
+        .feedback-card {
+            margin-top: 28px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: var(--status-bg);
+            border: 1px solid var(--status-border);
+            color: var(--status-text);
+            display: none;
+            transform: scale(0.98);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .feedback-card.show {
+            display: block;
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .result-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .result-grade {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .result-desc {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Der Noten-Retter</h1>
+        <div class="subtitle">Berechne deine exakte Zeugnisnote inklusive pädagogischem Spielraum.</div>
+
+        <div class="form-group">
+            <label for="fachTyp">Fachart:</label>
+            <select id="fachTyp" onchange="anpassenFachfelder()">
+                <option value="haupt">Hauptfach (50% Mündlich / 2x 25% Arbeiten)</option>
+                <option value="neben">Nebenfach (66.67% Mündlich / 1x 33.33% Arbeit)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="noteMuendlich">Mündliche Note (1 - 6):</label>
+            <input type="number" id="noteMuendlich" min="1" max="6" step="0.25" placeholder="z.B. 2.5">
+        </div>
+
+        <div class="form-group" id="arbeit1-group">
+            <label id="arbeit1-label" for="noteArbeit1">1. Klassenarbeit:</label>
+            <input type="number" id="noteArbeit1" min="1" max="6" step="1" placeholder="z.B. 3">
+        </div>
+
+        <div class="form-group" id="arbeit2-group">
+            <label for="noteArbeit2">2. Klassenarbeit:</label>
+            <input type="number" id="noteArbeit2" min="1" max="6" step="1" placeholder="z.B. 2">
+        </div>
+
+        <div class="form-group">
+            <label for="vorherigeNote">Endnote des vorherigen Halbjahres (Optional):</label>
+            <input type="number" id="vorherigeNote" min="1" max="6" step="1" placeholder="Hilft bei ,5 Entscheidungen">
+        </div>
+
+        <button class="btn" onclick="berechneZeugnisnote()">Note berechnen</button>
+
+        <div id="feedbackCard" class="feedback-card">
+            <div class="result-title">Errechnete Endnote</div>
+            <div id="gradeOutput" class="result-grade">--</div>
+            <div id="descOutput" class="result-desc"></div>
+        </div>
+    </div>
+
+<script>
+// Passt die Felder an, je nachdem ob Haupt- oder Nebenfach gewählt ist
+function anpassenFachfelder() {
+    const fachTyp = document.getElementById("fachTyp").value;
+    const arbeit2Group = document.getElementById("arbeit2-group");
+    const arbeit1Label = document.getElementById("arbeit1-label");
+
+    if (fachTyp === "neben") {
+        arbeit2Group.style.display = "none";
+        arbeit1Label.innerText = "Klassenarbeit / Epochalnote:";
+    } else {
+        arbeit2Group.style.display = "block";
+        arbeit1Label.innerText = "1. Klassenarbeit:";
+    }
+    // Versteckt das Ergebnis beim Wechseln der Fachart
+    document.getElementById("feedbackCard").classList.remove("show");
+}
+
+function berechneZeugnisnote() {
+    const fachTyp = document.getElementById("fachTyp").value;
+    const muendlich = parseFloat(document.getElementById("noteMuendlich").value);
+    const arbeit1 = parseFloat(document.getElementById("noteArbeit1").value);
+    const vorherige = parseFloat(document.getElementById("vorherigeNote").value);
+
+    // Validierung der Pflichtfelder
+    if (isNaN(muendlich) || isNaN(arbeit1)) {
+        alert("Bitte trage mindestens die mündliche Note und die erste Arbeit ein.");
+        return;
+    }
+
+    let schnitt = 0;
+
+    if (fachTyp === "haupt") {
+        const arbeit2 = parseFloat(document.getElementById("noteArbeit2").value);
+        if (isNaN(arbeit2)) {
+            alert("Bitte trage auch die zweite Klassenarbeit für das Hauptfach ein.");
+            return;
+        }
+        // Hauptfach: 50% Mündlich, 2x 25% Schriftlich (= 50% Schriftlich gesamt)
+        const schriftlichSchnitt = (arbeit1 + arbeit2) / 2;
+        schnitt = (muendlich * 0.5) + (schriftlichSchnitt * 0.5);
+    } else {
+        // Nebenfach: 66.666...% Mündlich, 33.333...% Schriftlich (Verhältnis 2/3 zu 1/3)
+        schnitt = (muendlich * (2/3)) + (arbeit1 * (1/3));
+    }
+
+    let endnote = Math.round(schnitt); // Standard-Rundung
+    let pädagogischerHinweis = "";
+
+    // SONDERREGEL BEI GENAU ,5 (Trend-Entscheidung anhand des letzten Halbjahres)
+    const nachkomma = schnitt - Math.floor(schnitt);
+    if (Math.abs(nachkomma - 0.5) < 0.001) { // Prüft auf mathematisch ca. ,5
+        const abgerundet = Math.floor(schnitt);
+        const aufgerundet = Math.ceil(schnitt);
+
+        if (!isNaN(vorherige)) {
+            if (aufgerundet > vorherige) {
+                // Die schlechtere Note (höhere Zahl) ist schlechter als im Vorhalbjahr -> Man hat sich verschlechtert -> Lehrer rundet eher ab/auf zum Schlechteren
+                endnote = aufgerundet;
+                pädagogischerHinweis = `Da du im letzten Halbjahr eine <strong>${vorherige}</strong> hattest, hast du dich verschlechtert. Bei einer <strong>${schnitt.toFixed(2)}</strong> wird daher meist auf die <strong>${endnote}</strong> aufgerundet.`;
+            } else if (abgerundet < vorherige) {
+                // Die bessere Note (kleinere Zahl) ist besser als im Vorhalbjahr -> Man hat sich verbessert -> Lehrer gibt die bessere Note
+                endnote = abgerundet;
+                pädagogischerHinweis = `Starke Leistung! Da du im letzten Halbjahr eine <strong>${vorherige}</strong> hattest, zeigt dein Trend nach oben. Bei einer <strong>${schnitt.toFixed(2)}</strong> gibt dir der Lehrer wahrscheinlich die bessere <strong>${endnote}</strong>.`;
+            } else {
+                endnote = aufgerundet; // Standardfall wenn gleichbleibend
+                pädagogischerHinweis = `Du stehst exakt auf <strong>${schnitt.toFixed(2)}</strong>. Da du im Vorjahr dieselbe Note hattest, liegt es komplett im Ermessen des Lehrers (Tipp: Einmal freiwillig melden rettet die bessere Note!).`;
+            }
+        } else {
+            endnote = aufgerundet; // Standard-Rundung falls kein Vorhalbjahr eingetragen ist
+            pädagogischerHinweis = `Du stehst exakt zwischen zwei Noten (<strong>${schnitt.toFixed(2)}</strong>). Trag deine vorherige Note ein, um die Trend-Entscheidung zu simulieren!`;
+        }
+    } else {
+        // Normaler Text, wenn es keine ,5 Entscheidung ist
+        pädagogischerHinweis = `Dein mathematisch exakter Schnitt liegt bei <strong>${schnitt.toFixed(2)}</strong>.`;
+    }
+
+    // UPDATING THE DESIGN (DIE COOLE FUNKTION UNTEN)
+    const card = document.getElementById("feedbackCard");
+    const gradeOut = document.getElementById("gradeOutput");
+    const descOut = document.getElementById("descOutput");
+
+    gradeOut.innerText = endnote;
+    descOut.innerHTML = pädagogischerHinweis;
+
+    // Dynamische Farbänderung des Elements basierend auf der Note (Minimalistisch aber wirkungsvoll)
+    if (endnote <= 2) {
+        // Sehr gut / Gut -> Edles, dezentes Grün
+        document.documentElement.style.setProperty('--status-bg', '#f0fdf4');
+        document.documentElement.style.setProperty('--status-border', '#bbf7d0');
+        document.documentElement.style.setProperty('--status-text', '#16a34a');
+    } else if (endnote === 3 || endnote === 4) {
+        // Befriedigend / Ausreichend -> Neutrales Anthrazit/Blau
+        document.documentElement.style.setProperty('--status-bg', '#f8fafc');
+        document.documentElement.style.setProperty('--status-border', '#e2e8f0');
+        document.documentElement.style.setProperty('--status-text', '#475569');
+    } else {
+        // Mangelhaft / Ungenügend -> Warnendes Soft-Rot
+        document.documentElement.style.setProperty('--status-bg', '#fef2f2');
+        document.documentElement.style.setProperty('--status-border', '#fca5a5');
+        document.documentElement.style.setProperty('--status-text', '#dc2626');
+        descOut.innerHTML += "<br><br>⚠️ <strong>Rettungs-Tipp:</strong> Bereite für die nächste Stunde unaufgefordert ein Kurzreferat vor, um deine mündliche Note sofort anzuheben!";
+    }
+
+    // Animation triggern
+    card.classList.add("show");
+}
+</script>
+
+</body>
+</html>
